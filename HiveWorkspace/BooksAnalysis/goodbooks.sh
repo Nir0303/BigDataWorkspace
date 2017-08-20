@@ -18,7 +18,7 @@ SET hive.auto.convert.join = false;
 DROP TABLE IF EXISTS BOOKS;
 DROP TABLE IF EXISTS RATINGS;
 
-CREATE TABLE RATINGS (BOOK_ID INT, USER_ID INT, RATING INT) CLUSTERED BY (BOOK_ID) INTO 5 BUCKETS;
+CREATE TABLE RATINGS (BOOK_ID INT, USER_ID INT, RATING INT) CLUSTERED BY (BOOK_ID) INTO 5 BUCKETS ROW FORMAT DELIMITED FIELDS TERMINATED BY ',';
 
 CREATE TABLE BOOKS ( BOOK_ID INT, TITLE STRING,GOODREADS_BOOK_ID INT ,GOODREADS_WORK_ID INT) 
 CLUSTERED BY (BOOK_ID) INTO 5 BUCKETS
@@ -46,16 +46,26 @@ CREATE VIEW BOOKS_ANA_SEMIJOIN AS
 SELECT BOOKS.* FROM BOOKS LEFT SEMI JOIN RATINGS ON BOOKS.BOOKS_ID = RATINGS.BOOK_ID;
 
 DELETE FILES /home/nir0303/working/BigDataWorkspace/HiveWorkspace/BooksAnalysis/;
-ADD FILE /home/nir0303/working/BigDataWorkspace/HiveWorkspace/BooksAnalysis/reduce.py;
+ADD FILE /home/nir0303/working/BigDataWorkspace/HiveWorkspace/BooksAnalysis/reducer.py;
 ADD FILE /home/nir0303/working/BigDataWorkspace/HiveWorkspace/BooksAnalysis/mapper.py;
+
 
 
 FROM(
 FROM RATINGS 
 MAP BOOK_ID,USER_ID,RATING USING 'mapper.py' as book_id,rating
 ) map_output
-Reduce book_id,rating using 'reduce.py' 
+Reduce book_id,rating using 'reducer.py' 
 as MAX_RATING;
+
+
+dfs -ls /user/hive/warehouse/
+" 
+
+
+hive  -e"
+
+USE BOOKS;
 
 DROP TABLE IF EXISTS GOODBOOKS;
 
@@ -63,9 +73,7 @@ CREATE TABLE GOODBOOKS AS
 SELECT BOOK_ID,GOODREADS_BOOKS_ID,TITLE,GOODREADS_WORK_ID,RATING FROM BOOKS_ANA_INNERJOIN
 WHERE RATING >=4;
 
+
 SELECT COUNT(0) FROM GOODBOOKS;
-
 SELECT * FROM GOODBOOKS ORDER BY RATING DESC LIMIT 20;
-
-dfs -ls /user/hive/warehouse/
-" > output.txt
+">output.txt
